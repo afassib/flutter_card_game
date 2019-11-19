@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 
-class Card extends StatelessWidget {
+class RondaCard extends StatelessWidget {
   final int type;
   final int number; 
-  Card(this.type, this.number);
+  RondaCard(this.type, this.number);
   @override
   Widget build(BuildContext context) {
-    return Container(
-      child: Image(
-        image: AssetImage(""),
-      )
-    );
+    return Image(
+        image: AssetImage('assets/cards/$type$number.gif'),
+      );
   }
   List<Card> getDeck()
   {
