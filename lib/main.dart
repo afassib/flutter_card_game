@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ronda_dev/game.dart';
+import 'package:ronda_dev/home.dart';
 
 void main() => runApp(MyApp());
 
@@ -12,7 +12,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: Game()
+      home: Home("Ronda Flutter v1.0", "play a first game.")
     );
   }
 }

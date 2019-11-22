@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:ronda_dev/card.dart';
 //import 'package:ronda/card.dart';
@@ -15,6 +17,10 @@ class _GameState extends State<Game> {
   List<RondaCard> myScore;
   List<RondaCard> opponentScore;
   bool myturn;
+  String gameid;
+  int myid;
+  int round;
+  //_GameState(this.gameid);
   @override
   initState() {
     super.initState();
@@ -25,19 +31,46 @@ class _GameState extends State<Game> {
     arena = new List<RondaCard>();
     myScore = new List<RondaCard>();
     opponentScore = new List<RondaCard>();
-    //
-    hand.add(deck.removeLast());
-    opponentHand.add(deck.removeLast());
-    arena.add(deck.removeLast());
+    deck.shuffle();
+    round = 1;
+    startround();
   }
 
-  void _userClick(int a, int b) {
-    setState(() {
-      if(myturn) myturn = false;
-      else myturn = true;
+  startround() {
+    if (round >= 5) {
+      Navigator.pop(context, "you lose!");
+    } else {
+      hand.add(deck.removeLast());
+      hand.add(deck.removeLast());
+      hand.add(deck.removeLast());
       hand.add(deck.removeLast());
       opponentHand.add(deck.removeLast());
-      arena.add(deck.removeLast());
+      opponentHand.add(deck.removeLast());
+      opponentHand.add(deck.removeLast());
+      opponentHand.add(deck.removeLast());
+    }
+    round++;
+  }
+
+  void _userClick(RondaCard rc) {
+    setState(() {
+      if (myturn) {
+        int index = hand.indexOf(rc);
+        play(true, index);
+        myturn = false;
+        if (opponentHand.isNotEmpty) {
+          Timer(Duration(seconds: 1), () {
+            setState(() {
+              play(false, 0);
+              myturn = true;
+              if (opponentHand.isEmpty) {
+                startround();
+              }
+            });
+          });
+        }
+        //myturn = false;
+      }
     });
   }
 
@@ -64,14 +97,16 @@ class _GameState extends State<Game> {
                 Expanded(
                   flex: 3,
                   child: AnimatedContainer(
-                    decoration: (!myturn)? new BoxDecoration() : new BoxDecoration(
-                      border: new Border.all(
-                          color: Colors.green,
-                          width: 5.0,
-                          style: BorderStyle.solid),
-                      borderRadius:
-                          new BorderRadius.all(new Radius.circular(20.0)),
-                    ),
+                    decoration: (myturn)
+                        ? new BoxDecoration()
+                        : new BoxDecoration(
+                            border: new Border.all(
+                                color: Colors.green,
+                                width: 5.0,
+                                style: BorderStyle.solid),
+                            borderRadius:
+                                new BorderRadius.all(new Radius.circular(20.0)),
+                          ),
                     duration: Duration(
                       milliseconds: 200,
                     ),
@@ -79,7 +114,7 @@ class _GameState extends State<Game> {
                     child: Row(
                       mainAxisSize: MainAxisSize.max,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: hand.map((card) {
+                      children: opponentHand.map((card) {
                         return Expanded(
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
@@ -129,21 +164,23 @@ class _GameState extends State<Game> {
                   flex: 3,
                   child: AnimatedContainer(
                     duration: Duration(milliseconds: 200),
-                    decoration: (myturn)? new BoxDecoration() : new BoxDecoration(
-                      border: new Border.all(
-                          color: Colors.green,
-                          width: 5.0,
-                          style: BorderStyle.solid),
-                      borderRadius:
-                          new BorderRadius.all(new Radius.circular(20.0)),
-                    ),
+                    decoration: (!myturn)
+                        ? new BoxDecoration()
+                        : new BoxDecoration(
+                            border: new Border.all(
+                                color: Colors.green,
+                                width: 5.0,
+                                style: BorderStyle.solid),
+                            borderRadius:
+                                new BorderRadius.all(new Radius.circular(20.0)),
+                          ),
                     child: Row(
                       children: hand.map((card) {
                         return Expanded(
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: GestureDetector(
-                              onTap: card.onTapHandler,
+                              onTap: card.customOnTap(),
                               child: card,
                             ),
                           ),
@@ -168,5 +205,55 @@ class _GameState extends State<Game> {
         ),
       ),
     );
+  }
+
+  void play(bool isPlayer, int index) {
+    int current = hand[index].number;
+    if (getSameCardIndex(current) != -1) {
+      if (isPlayer) {
+        score(true, hand.removeAt(index));
+        score(true, hand.removeAt(getSameCardIndex(current)));
+        while (getIndexofNextCard(current) != -1) {
+          score(true, arena.removeAt(getIndexofNextCard(current)));
+        }
+      } else {
+        score(false, opponentHand.removeAt(index));
+        score(false, opponentHand.removeAt(getSameCardIndex(current)));
+        while (getIndexofNextCard(current) != -1) {
+          score(false, arena.removeAt(getIndexofNextCard(current)));
+        }
+      }
+    } else {
+      if (isPlayer)
+        arena.add(hand.removeAt(index));
+      else
+        arena.add(opponentHand.removeAt(index));
+    }
+  }
+
+  int getSameCardIndex(int current) {
+    int same = -1;
+    for (RondaCard card in arena) {
+      if (card.isSameAs(current)) {
+        same = hand.indexOf(card);
+      }
+    }
+    return same;
+  }
+
+  int getIndexofNextCard(int current) {
+    int result = -1;
+    for (RondaCard card in arena) {
+      if (card.isNextOf(current)) result = hand.indexOf(card);
+    }
+    return result;
+  }
+
+  void score(isPlayer, RondaCard card) {
+    if (isPlayer) {
+      myScore.add(card);
+    } else {
+      opponentScore.add(card);
+    }
   }
 }

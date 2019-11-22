@@ -16,10 +16,15 @@ class RondaCard extends StatelessWidget {
     List<RondaCard> deck = new List<RondaCard>();
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 10; j++) {
-        deck.add(RondaCard(i, j, () => onTap(i,j)));
+        deck.add(RondaCard(i, j, onTap));
       }
     }
     return deck;
+  }
+
+  Function customOnTap()
+  {
+    return () => onTapHandler(this);
   }
 
   bool isSameAs(int rc)
