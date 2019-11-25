@@ -38,7 +38,7 @@ class _GameState extends State<Game> {
 
   startround() {
     if (round >= 5) {
-      Navigator.pop(context, "you lose!");
+      Navigator.pop(context, myScore.length > opponentScore.length ? "You win!!!!" : "you lose!");
     } else {
       hand.add(deck.removeLast());
       hand.add(deck.removeLast());
@@ -56,6 +56,7 @@ class _GameState extends State<Game> {
     setState(() {
       if (myturn) {
         int index = hand.indexOf(rc);
+        print("_userClick : Selected index is $index");
         play(true, index);
         myturn = false;
         if (opponentHand.isNotEmpty) {
@@ -208,19 +209,23 @@ class _GameState extends State<Game> {
   }
 
   void play(bool isPlayer, int index) {
-    int current = hand[index].number;
+    int current = isPlayer? hand[index].number : opponentHand[index].number;
+    print("Play: current card is ${current+1}");
+    print("Play: getSameCardIndex(current) : ${getSameCardIndex(current)}");
     if (getSameCardIndex(current) != -1) {
       if (isPlayer) {
         score(true, hand.removeAt(index));
-        score(true, hand.removeAt(getSameCardIndex(current)));
+        score(true, arena.removeAt(getSameCardIndex(current)));
         while (getIndexofNextCard(current) != -1) {
           score(true, arena.removeAt(getIndexofNextCard(current)));
+          current++;
         }
       } else {
         score(false, opponentHand.removeAt(index));
-        score(false, opponentHand.removeAt(getSameCardIndex(current)));
+        score(false, arena.removeAt(getSameCardIndex(current)));
         while (getIndexofNextCard(current) != -1) {
           score(false, arena.removeAt(getIndexofNextCard(current)));
+          current++;
         }
       }
     } else {
@@ -235,7 +240,8 @@ class _GameState extends State<Game> {
     int same = -1;
     for (RondaCard card in arena) {
       if (card.isSameAs(current)) {
-        same = hand.indexOf(card);
+        same = arena.indexOf(card);
+        print("Card ${card.number} is same as $current !");
       }
     }
     return same;
@@ -244,7 +250,10 @@ class _GameState extends State<Game> {
   int getIndexofNextCard(int current) {
     int result = -1;
     for (RondaCard card in arena) {
-      if (card.isNextOf(current)) result = hand.indexOf(card);
+      if (card.isNextOf(current)){
+        result = arena.indexOf(card);
+        print("Card ${card.number} is next of $current !");
+      }
     }
     return result;
   }

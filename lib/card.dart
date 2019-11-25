@@ -29,11 +29,13 @@ class RondaCard extends StatelessWidget {
 
   bool isSameAs(int rc)
   {
+    //print("isSameAs : $rc and ${this.number} ? = ${rc == this.number}");
     return rc == this.number;
   }
 
   bool isNextOf(int rc)
   {
+    //print("isNextOf : $rc and ${this.number} ?");
     return rc+1 == this.number;
   }
 }
