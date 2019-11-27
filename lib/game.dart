@@ -20,6 +20,8 @@ class _GameState extends State<Game> {
   String gameid;
   int myid;
   int round;
+  int lastToScore;
+  GlobalKey<AnimatedListState> opponentKey = GlobalKey<AnimatedListState>();
   //_GameState(this.gameid);
   @override
   initState() {
@@ -34,11 +36,25 @@ class _GameState extends State<Game> {
     deck.shuffle();
     round = 1;
     startround();
+    lastToScore = 0;
   }
 
   startround() {
     if (round >= 5) {
-      Navigator.pop(context, "you lose!");
+      if (lastToScore == 0) {
+        for (int i = 0; i < arena.length; i++) {
+          myScore.add(arena.removeLast());
+        }
+      } else {
+        for (int i = 0; i < arena.length; i++) {
+          opponentScore.add(arena.removeLast());
+        }
+      }
+      Navigator.pop(
+          context,
+          (myScore.length > opponentScore.length)
+              ? "you win! (${myScore.length} - ${opponentScore.length})"
+              : "you lose! (${myScore.length} - ${opponentScore.length})");
     } else {
       hand.add(deck.removeLast());
       hand.add(deck.removeLast());
@@ -48,6 +64,12 @@ class _GameState extends State<Game> {
       opponentHand.add(deck.removeLast());
       opponentHand.add(deck.removeLast());
       opponentHand.add(deck.removeLast());
+      if (opponentKey.currentState != null) {
+        opponentKey.currentState.insertItem(opponentHand.length - 4);
+        opponentKey.currentState.insertItem(opponentHand.length - 3);
+        opponentKey.currentState.insertItem(opponentHand.length - 2);
+        opponentKey.currentState.insertItem(opponentHand.length - 1);
+      }
     }
     round++;
   }
@@ -72,6 +94,17 @@ class _GameState extends State<Game> {
         //myturn = false;
       }
     });
+  }
+
+  Widget _buildItem(
+      BuildContext context, int index, Animation<double> animation) {
+    return ScaleTransition(
+      scale: animation,
+      child: Padding(
+        padding: const EdgeInsets.all(1.0),
+        child: opponentHand[index],
+      ),
+    );
   }
 
   @override
@@ -102,7 +135,7 @@ class _GameState extends State<Game> {
                         : new BoxDecoration(
                             border: new Border.all(
                                 color: Colors.green,
-                                width: 5.0,
+                                width: 1.0,
                                 style: BorderStyle.solid),
                             borderRadius:
                                 new BorderRadius.all(new Radius.circular(20.0)),
@@ -111,17 +144,16 @@ class _GameState extends State<Game> {
                       milliseconds: 200,
                     ),
                     width: double.infinity,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.max,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: opponentHand.map((card) {
-                        return Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: card,
-                          ),
-                        );
-                      }).toList(),
+                    child: Center(
+                      child: AnimatedList(
+                        key: opponentKey,
+                        scrollDirection: Axis.horizontal,
+                        shrinkWrap: true,
+                        initialItemCount: opponentHand.length,
+                        //mainAxisSize: MainAxisSize.max,
+                        //mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        itemBuilder: _buildItem,
+                      ),
                     ),
                   ),
                 ),
@@ -169,7 +201,7 @@ class _GameState extends State<Game> {
                         : new BoxDecoration(
                             border: new Border.all(
                                 color: Colors.green,
-                                width: 5.0,
+                                width: 1.0,
                                 style: BorderStyle.solid),
                             borderRadius:
                                 new BorderRadius.all(new Radius.circular(20.0)),
@@ -208,26 +240,28 @@ class _GameState extends State<Game> {
   }
 
   void play(bool isPlayer, int index) {
-    int current = hand[index].number;
+    int current = isPlayer ? hand[index].number : opponentHand[index].number;
     if (getSameCardIndex(current) != -1) {
       if (isPlayer) {
         score(true, hand.removeAt(index));
-        score(true, hand.removeAt(getSameCardIndex(current)));
+        score(true, arena.removeAt(getSameCardIndex(current)));
         while (getIndexofNextCard(current) != -1) {
           score(true, arena.removeAt(getIndexofNextCard(current)));
+          current++;
         }
       } else {
-        score(false, opponentHand.removeAt(index));
-        score(false, opponentHand.removeAt(getSameCardIndex(current)));
+        score(false, getLastWithAnimation(0, index));
+        score(false, arena.removeAt(getSameCardIndex(current)));
         while (getIndexofNextCard(current) != -1) {
           score(false, arena.removeAt(getIndexofNextCard(current)));
+          current++;
         }
       }
     } else {
       if (isPlayer)
         arena.add(hand.removeAt(index));
       else
-        arena.add(opponentHand.removeAt(index));
+        arena.add(getLastWithAnimation(0, index));
     }
   }
 
@@ -235,7 +269,7 @@ class _GameState extends State<Game> {
     int same = -1;
     for (RondaCard card in arena) {
       if (card.isSameAs(current)) {
-        same = hand.indexOf(card);
+        same = arena.indexOf(card);
       }
     }
     return same;
@@ -244,7 +278,7 @@ class _GameState extends State<Game> {
   int getIndexofNextCard(int current) {
     int result = -1;
     for (RondaCard card in arena) {
-      if (card.isNextOf(current)) result = hand.indexOf(card);
+      if (card.isNextOf(current)) result = arena.indexOf(card);
     }
     return result;
   }
@@ -252,8 +286,32 @@ class _GameState extends State<Game> {
   void score(isPlayer, RondaCard card) {
     if (isPlayer) {
       myScore.add(card);
+      lastToScore = 0;
     } else {
       opponentScore.add(card);
+      lastToScore = 1;
+    }
+  }
+
+  RondaCard getLastWithAnimation(int list, int index) {
+    if (list == 0) {
+      opponentKey.currentState.removeItem(index, (context, animation) {
+        return FadeTransition(
+          opacity:
+              CurvedAnimation(parent: animation, curve: Interval(0.5, 1.0)),
+          child: SizeTransition(
+            sizeFactor:
+                CurvedAnimation(parent: animation, curve: Interval(0.0, 1.0)),
+            axisAlignment: 0.0,
+            child: _buildItem(context, index, animation),
+          ),
+        );
+      });
+      return opponentHand.removeAt(index);
+    } else if (list == 1) {
+      return hand.removeAt(index);
+    } else {
+      return arena.removeAt(index);
     }
   }
 }
