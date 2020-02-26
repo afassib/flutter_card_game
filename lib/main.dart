@@ -8,11 +8,23 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Ronda Flutter',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: Home("Ronda Flutter v1.0", "play a first game.")
+      home: Scaffold(
+        body: Home("Ronda Flutter v1.0", Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Text(
+            "Play a first game :)",
+            style: TextStyle(
+              color: Colors.blueAccent,
+              fontStyle: FontStyle.italic,
+              fontSize: 20,
+            ),
+          ),
+        )),
+      ),
     );
   }
 }

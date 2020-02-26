@@ -1,14 +1,56 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:ronda_dev/card.dart';
+import 'package:audioplayers/audio_cache.dart';
+
+import 'ai.dart';
+
+class PointGenerator {
+  int lastNumber;
+  int lastPlayer;
+  int point;
+  PointGenerator() {
+    lastPlayer = -1;
+    lastPlayer = -1;
+    point = 0;
+  }
+  bool scorePoint(int player, int number) {
+    return point == 0
+        ? false
+        : point == 1 && player != lastPlayer && number == lastNumber
+            ? true
+            : false;
+  }
+
+  int getLastCardByPlayer() {
+    return lastPlayer == 1 && point == 1
+        ? lastNumber > -1 && lastNumber < 10 ? lastNumber : -1
+        : -1;
+  }
+
+  void setV(int number, player, p) {
+    lastNumber = number;
+    lastPlayer = player;
+    point = p;
+  }
+}
 
 class Game extends StatefulWidget {
+  final int level;
+  Game(this.level);
   @override
-  _GameState createState() => _GameState();
+  _GameState createState() => _GameState(this.level);
 }
 
 class _GameState extends State<Game> {
+  _GameState(this.level);
+  final int level;
+  static AudioCache player = new AudioCache();
+  static const confirmation = "sounds/confirmation.wav";
+  static const gameover = "sounds/gameover.wav";
+  static const money = "sounds/money.wav";
+  static const wingame = "sounds/wingame.wav";
+  static const click = "sounds/click.wav";
   List<RondaCard> hand;
   List<RondaCard> opponentHand;
   List<RondaCard> deck;
@@ -16,11 +58,15 @@ class _GameState extends State<Game> {
   List<RondaCard> arena2;
   List<RondaCard> myScore;
   List<RondaCard> opponentScore;
+  int myScore2 = 0;
+  int opponentScore2 = 0;
+  PointGenerator pointGenerator = new PointGenerator();
   bool myturn;
   String gameid;
   int myid;
   int round;
   int lastToScore;
+  int lastcardplayedbyme = -1;
   GlobalKey<AnimatedListState> opponentKey = GlobalKey();
   GlobalKey<AnimatedListState> myKey = GlobalKey();
   GlobalKey<AnimatedListState> arena1Key = GlobalKey();
@@ -48,25 +94,46 @@ class _GameState extends State<Game> {
     print("(${myScore.length} - ${opponentScore.length})");
     if (round > 5) {
       if (lastToScore == 0) {
-        for (int i = 0; i < arena1.length; i++) {
-          myScore.add(getLastWithAnimation(1, arena1.length - 1));
+        while (arena1.isNotEmpty) {
+          myScore.add(getLastWithAnimation(1, 0)); //arena1.length - 1));
         }
-        for (int i = 0; i < arena2.length; i++) {
-          myScore.add(getLastWithAnimation(2, arena2.length - 1));
+        while (arena2.isNotEmpty) {
+          myScore.add(getLastWithAnimation(2, 0)); //arena2.length - 1));
         }
       } else {
-        for (int i = 0; i < arena1.length; i++) {
-          opponentScore.add(getLastWithAnimation(1, arena1.length - 1));
+        while (arena1.isNotEmpty) {
+          opponentScore.add(getLastWithAnimation(1, 0)); //arena1.length - 1));
         }
-        for (int i = 0; i < arena2.length; i++) {
-          opponentScore.add(getLastWithAnimation(2, arena2.length - 1));
+        while (arena2.isNotEmpty) {
+          opponentScore.add(getLastWithAnimation(2, 0)); //arena2.length - 1));
         }
       }
+      print(myScore);
+      print(opponentScore);
+      print(arena1);
+      print(arena2);
+      myScore.length + myScore2 > opponentScore.length + opponentScore2
+          ? player.play(wingame)
+          : player.play(gameover);
       Navigator.pop(
-          context,
-          (myScore.length > opponentScore.length)
-              ? "you win! (${myScore.length} - ${opponentScore.length})"
-              : "you lose! (${myScore.length} - ${opponentScore.length})");
+        context,
+        Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Text(
+            (myScore.length + myScore2 > opponentScore.length + opponentScore2)
+                ? "you win! => ${myScore.length + myScore2} (${myScore.length}/$myScore2) VS ${opponentScore.length + opponentScore2} (${opponentScore.length}/$opponentScore2)"
+                : "you lose! => ${myScore.length + myScore2} (${myScore.length}/$myScore2) VS ${opponentScore.length + opponentScore2} (${opponentScore.length}/$opponentScore2)",
+            style: TextStyle(
+              color: (myScore.length + myScore2 >
+                      opponentScore.length + opponentScore2)
+                  ? Colors.greenAccent
+                  : Colors.redAccent,
+              fontStyle: FontStyle.italic,
+              fontSize: 20,
+            ),
+          ),
+        ),
+      );
     } else {
       hand.add(deck.removeLast());
       hand.add(deck.removeLast());
@@ -78,10 +145,10 @@ class _GameState extends State<Game> {
         myKey.currentState.insertItem(hand.length - 2);
         myKey.currentState.insertItem(hand.length - 1);
       }
-      opponentHand.add(deck.removeLast());
-      opponentHand.add(deck.removeLast());
-      opponentHand.add(deck.removeLast());
-      opponentHand.add(deck.removeLast());
+      opponentHand.add(deck.removeLast().swapSide());
+      opponentHand.add(deck.removeLast().swapSide());
+      opponentHand.add(deck.removeLast().swapSide());
+      opponentHand.add(deck.removeLast().swapSide());
       if (opponentKey.currentState != null) {
         opponentKey.currentState.insertItem(opponentHand.length - 4);
         opponentKey.currentState.insertItem(opponentHand.length - 3);
@@ -101,7 +168,13 @@ class _GameState extends State<Game> {
         if (opponentHand.isNotEmpty) {
           Timer(Duration(seconds: 1), () {
             setState(() {
-              play(false, 0);
+              play(
+                  false,
+                  level == 3
+                      ? AI.level3Play(opponentHand, arena1 + arena2, pointGenerator.getLastCardByPlayer())
+                      : level == 2
+                          ? AI.level2Play(opponentHand, arena1 + arena2)
+                          : AI.level1Play(opponentHand, arena1 + arena2));
               myturn = true;
               if (opponentHand.isEmpty) {
                 startround();
@@ -187,7 +260,7 @@ class _GameState extends State<Game> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: <Widget>[
                       Text("Da one to beat (stupid rng btw)"),
-                      Text('Score : ${opponentScore.length}')
+                      Text('Score : ${opponentScore.length + opponentScore2}')
                     ],
                   ),
                 ),
@@ -195,11 +268,18 @@ class _GameState extends State<Game> {
                   flex: 3,
                   child: AnimatedContainer(
                     decoration: (myturn)
-                        ? new BoxDecoration()
+                        ? new BoxDecoration(
+                            border: new Border.all(
+                                color: Colors.greenAccent,
+                                width: 0.5,
+                                style: BorderStyle.solid),
+                            borderRadius:
+                                new BorderRadius.all(new Radius.circular(20.0)),
+                          )
                         : new BoxDecoration(
                             border: new Border.all(
                                 color: Colors.green,
-                                width: 1.0,
+                                width: 3.0,
                                 style: BorderStyle.solid),
                             borderRadius:
                                 new BorderRadius.all(new Radius.circular(20.0)),
@@ -272,11 +352,18 @@ class _GameState extends State<Game> {
                   child: AnimatedContainer(
                     duration: Duration(milliseconds: 200),
                     decoration: (!myturn)
-                        ? new BoxDecoration()
+                        ? new BoxDecoration(
+                            border: new Border.all(
+                                color: Colors.greenAccent,
+                                width: 0.5,
+                                style: BorderStyle.solid),
+                            borderRadius:
+                                new BorderRadius.all(new Radius.circular(20.0)),
+                          )
                         : new BoxDecoration(
                             border: new Border.all(
                                 color: Colors.green,
-                                width: 1.0,
+                                width: 3.0,
                                 style: BorderStyle.solid),
                             borderRadius:
                                 new BorderRadius.all(new Radius.circular(20.0)),
@@ -310,7 +397,7 @@ class _GameState extends State<Game> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: <Widget>[
-                      Text('Score : ${myScore.length}'),
+                      Text('Score : ${myScore.length + myScore2}'),
                       Text("Me lul")
                     ],
                   ),
@@ -324,11 +411,18 @@ class _GameState extends State<Game> {
   }
 
   void play(bool isPlayer, int index) {
+    player.play(click);
     int current = isPlayer ? hand[index].number : opponentHand[index].number;
     List<int> getit = getSameCardIndex(current);
     print(getit);
     if (getit[1] != -1) {
       if (isPlayer) {
+        if (pointGenerator.scorePoint(1, current)) {
+          player.play(money);
+          myScore2++;
+          pointGenerator.setV(null, null, 0);
+        } else
+          player.play(confirmation);
         score(true, getLastWithAnimation(3, index));
         score(true, getLastWithAnimation(getit[0], getit[1]));
         while (getIndexofNextCard(current)[1] != -1) {
@@ -339,6 +433,12 @@ class _GameState extends State<Game> {
           current++;
         }
       } else {
+        if (pointGenerator.scorePoint(0, current)) {
+          player.play(money);
+          opponentScore2++;
+          pointGenerator.setV(null, null, 0);
+        } else
+          player.play(confirmation);
         score(false, getLastWithAnimation(0, index));
         score(false, getLastWithAnimation(getit[0], getit[1]));
         while (getIndexofNextCard(current)[1] != -1) {
@@ -351,6 +451,7 @@ class _GameState extends State<Game> {
       }
     } else {
       if (isPlayer) {
+        pointGenerator.setV(current, 1, 1);
         if (arena2.length >= 4) {
           arena1.add(getLastWithAnimation(3, index));
           if (arena1Key.currentState != null)
@@ -361,6 +462,7 @@ class _GameState extends State<Game> {
             arena2Key.currentState.insertItem(arena2.length - 1);
         }
       } else {
+        pointGenerator.setV(current, 0, 1);
         if (arena1.length >= 4) {
           arena2.add(getLastWithAnimation(0, index));
           if (arena2Key.currentState != null)
@@ -433,7 +535,7 @@ class _GameState extends State<Game> {
             ),
           );
         });
-      return opponentHand.removeAt(index);
+      return opponentHand.removeAt(index).swapSide();
     } else if (list == 3) {
       if (myKey.currentState != null)
         myKey.currentState.removeItem(index, (context, animation) {

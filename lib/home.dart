@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:ronda_dev/game.dart';
+import 'package:ronda_dev/levellist.dart';
+import 'package:ronda_dev/rules.dart';
 
 class Home extends StatefulWidget {
   final String message;
-  final String message2;
+  final Widget message2;
   Home(this.message, this.message2);
   @override
   _HomeState createState() => _HomeState(this.message, this.message2);
@@ -11,16 +12,34 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   String message;
-  String message2;
+  Widget message2;
   _HomeState(this.message, this.message2);
   _startGameAndGetResult(BuildContext context) async {
-    final result = await Navigator.push(
+    final Widget result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => Game()),
+      MaterialPageRoute(builder: (context) => LevelList()),
     );
     setState(() {
-      this.message2 = result??"play a first game.";
+      this.message2 = result ??
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Text(
+              "play a first game.",
+              style: TextStyle(
+                color: Colors.greenAccent,
+                fontStyle: FontStyle.italic,
+                fontSize: 20,
+              ),
+            ),
+          );
     });
+  }
+
+  _startRules(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => Rules()),
+    );
   }
 
   @override
@@ -37,16 +56,9 @@ class _HomeState extends State<Home> {
                 fontSize: 30,
               ),
             ),
-            Text(
-              this.message2,
-              style: TextStyle(
-                color: Colors.green[400],
-                fontStyle: FontStyle.italic,
-                fontSize: 20,
-              ),
-            ),
+            this.message2,
             RaisedButton(
-              color: Colors.blue,
+              color: Colors.greenAccent,
               onPressed: () {
                 _startGameAndGetResult(context);
               },
@@ -55,11 +67,32 @@ class _HomeState extends State<Home> {
                 children: <Widget>[
                   Text("Play",
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 46,
                         fontFamily: "Calibri",
                       )),
                   Icon(
                     Icons.play_arrow,
+                    size: 60,
+                  )
+                ],
+              ),
+            ),
+            RaisedButton(
+              color: Colors.lightGreenAccent,
+              onPressed: () {
+                _startRules(context);
+              },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text("Game rules",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontFamily: "Calibri",
+                      )),
+                  Icon(
+                    Icons.library_books,
+                    size: 15,
                   )
                 ],
               ),
